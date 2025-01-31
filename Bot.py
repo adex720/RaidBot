@@ -119,9 +119,16 @@ class Bot:
                     tunnit (int): Monenko tunnin välein tilanne päivitetään
                 """
 
-            a = tunnit + 3
-            result = await self.get_raid_activity()
-            await handle_reply(interaction, result)
+            if not await self.is_manager(interaction.user):
+                await interaction.response.send_message('Pyydä klaanin tai botin ylläpitoa vaihtamaan aikaa')
+                return
+
+            result = await self.set_update_frequency(tunnit)
+            if result == 1:
+                await interaction.response.send_message('Päivitysnopeus päivitetty')
+                return
+
+            await interaction.response.send_message('Anna kelvollinen aika väliltä 0-24 tuntia')
 
         @bot.tree.command(name="github", description="Linkki botin koodiin")
         async def github(interaction):
@@ -147,6 +154,15 @@ class Bot:
 
         self.bot = bot
         bot.run(token)
+
+    async def is_manager(self, user):
+        manager_roles = self.db.get_manager_roles()
+
+        for role in user.roles:
+            if role.id in manager_roles:
+                return True
+
+        return False
 
     async def get_raid_activity(self):
         raid_data = await self.client.get_raid_activity()
@@ -282,6 +298,13 @@ class Bot:
             return 'Päivitettiin pelaajan muistutus, ja siirrettiin se tälle Discord-käyttäjälle'
 
         return 'Jotain ihmeellistä tapahtui'
+
+    async def set_update_frequency(self, frequency):
+        if frequency < 0 or frequency > 24:
+            return -1
+
+        self.db.set_update_frequency(frequency)
+        return 1
 
     async def run_on_db(self, interaction, command):
         cursor = self.db.cursor()

@@ -44,6 +44,10 @@ class Database:
         cursor.execute('SELECT update_frequency FROM memory;')
         return int(get_first(cursor.fetchone()))
 
+    def set_update_frequency(self, hours):
+        cursor = self.db.cursor()
+        cursor.execute('UPDATE memory SET update_frequency=' + str(hours) + ';')
+
     def get_info_channel_id(self):
         cursor = self.db.cursor()
         cursor.execute('SELECT info_channel FROM memory;')
@@ -141,5 +145,10 @@ class Database:
 
     def get_reminders(self):
         cursor = self.db.cursor()
-        cursor.execute('SELECT * FROM members')
+        cursor.execute('SELECT * FROM members;')
         return cursor.fetchall()
+
+    def get_manager_roles(self):
+        cursor = self.db.cursor()
+        cursor.execute('SELECT * FROM manager_roles;')
+        return [int(x) for x in cursor.fetchone()]
