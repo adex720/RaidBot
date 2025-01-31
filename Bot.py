@@ -98,10 +98,6 @@ class Bot:
             result = await self.get_raid_activity()
             await handle_reply(interaction, result)
 
-        @bot.tree.command(name="github", description="Linkki botin koodiin")
-        async def github(interaction):
-            await interaction.response.send_message('https://github.com/adex720/RaidBot')
-
         @bot.tree.command(name="muistutus", description="Lisää muistutus tekemättömistä raideista")
         async def muistutus(interaction, tunnit: int, tag: str):
             """Lisää muistutus tekemättömistä raideista
@@ -112,6 +108,37 @@ class Bot:
                 tag (str): Clash of Clans -käyttäjän tägi
             """
             await handle_reply(interaction, await self.add_reminder(tunnit, interaction.user.id, tag))
+
+        @bot.tree.command(name="paivitys-nopeus",
+                          description="Aseta kuinka monen tunnin välein lista raiditilanteesta lähetetään")
+        async def paivitys_nopeus(interaction, tunnit: int):
+            """Aseta kuinka monen tunnin välein lista raiditilanteesta lähetetään
+
+                Args:
+                    interaction (discord.Interaction): Interaction
+                    tunnit (int): Monenko tunnin välein tilanne päivitetään
+                """
+
+            a = tunnit + 3
+            result = await self.get_raid_activity()
+            await handle_reply(interaction, result)
+
+        @bot.tree.command(name="github", description="Linkki botin koodiin")
+        async def github(interaction):
+            await interaction.response.send_message('https://github.com/adex720/RaidBot')
+
+        @bot.tree.command(name="tietokanta", description="Aja koodia botin tietokannassa (Vain botin omistaja)")
+        async def tietokanta(interaction, syote: str):
+            """Aja koodia botin tietokannassa (Vain botin omistaja)
+
+                Args:
+                    interaction (discord.Interaction): Interaction
+                    syote (str): Koodi
+                """
+            if interaction.user.id != 560815341140181034:
+                return
+
+            await self.run_on_db(interaction, syote)
 
         @tasks.loop(minutes=31)
         async def task():
@@ -255,3 +282,18 @@ class Bot:
             return 'Päivitettiin pelaajan muistutus, ja siirrettiin se tälle Discord-käyttäjälle'
 
         return 'Jotain ihmeellistä tapahtui'
+
+    async def run_on_db(self, interaction, command):
+        cursor = self.db.cursor()
+        try:
+            cursor.execute(command)
+            got = cursor.fetchall()
+            self.db.commit()
+            result = 'None'
+            if got is not None:
+                result = '\n'.join(', '.join(got))
+
+        except Exception as e:
+            result = repr(e)
+
+        await handle_reply(interaction, result)
