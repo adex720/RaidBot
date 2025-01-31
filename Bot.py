@@ -1,6 +1,14 @@
-import discord
+import datetime
+import math
+import time
 
-from discord.ext import commands
+import discord
+# https://discordpy.readthedocs.io/en/latest/index.html
+# https://github.com/Rapptz/discord.py
+
+from discord.ext import commands, tasks
+
+MILLISECONDS_IN_HOUR = 1000 * 60 * 60
 
 
 def split_string(text, split='\n', max_length=2000):
@@ -65,8 +73,9 @@ async def handle_reply(interaction, text, max_message_count=5):
 
 class Bot:
 
-    def __init__(self, token, intents, client):
+    def __init__(self, token, intents, client, database):
         self.client = client
+        self.db = database
 
         bot = commands.Bot(command_prefix='!', intents=intents, activity=discord.Game(name="Clash of Clans", type=3),
                            status=discord.Status.online)
@@ -77,7 +86,9 @@ class Bot:
             await bot.tree.sync()
             await client.log_in()
 
-        @bot.tree.command(name="jasenet", description="Listaa klaanin jäsenet")
+            task.start()
+
+        @bot.tree.command(name="jäsenet", description="Listaa klaanin jäsenet")
         async def listaa_jasenet(interaction):
             data = await self.client.get_members()
             await handle_reply(interaction, split_list([row['name'] for row in data]))
@@ -87,12 +98,40 @@ class Bot:
             result = await self.get_raid_activity()
             await handle_reply(interaction, result)
 
+        @bot.tree.command(name="github", description="Linkki botin koodiin")
+        async def github(interaction):
+            await interaction.response.send_message('https://github.com/adex720/RaidBot')
+
+        @bot.tree.command(name="muistutus", description="Lisää muistutus tekemättömistä raideista")
+        async def muistutus(interaction, tunnit: int, tag: str):
+            """Lisää muistutus tekemättömistä raideista
+
+            Args:
+                interaction (discord.Interaction): Interaction
+                tunnit (int): Muistuta kun raidia on näin monta tuntia jäljellä. -1 poistaa muistutuksen
+                tag (str): Clash of Clans -käyttäjän tägi
+            """
+            await handle_reply(interaction, await self.add_reminder(tunnit, interaction.user.id, tag))
+
+        @tasks.loop(minutes=31)
+        async def task():
+            print('Checking reminders')
+            await self.check_reminders()
+
+        @task.before_loop
+        async def before_task():
+            print('Checking reminders')
+            await self.check_reminders(force_update=True)
+
+        self.bot = bot
         bot.run(token)
 
     async def get_raid_activity(self):
-        data = await self.client.get_raid_activity()
+        raid_data = await self.client.get_raid_activity()
+        member_data = await self.client.get_members()
+
         # end = data['endTime']
-        members = data['members']
+        members = raid_data['members']
 
         result = []
         attacked = set()
@@ -103,8 +142,6 @@ class Bot:
 
             attacked.add(member['tag'])
 
-        member_data = await self.client.get_members()
-
         for member in member_data:
             if member['tag'] in attacked:
                 continue
@@ -114,3 +151,105 @@ class Bot:
         result.sort()
 
         return split_list([rivi for m, rivi in result])
+
+    async def is_raid_on(self):
+        return await self.get_hours_left_on_raid() >= 0
+
+    async def get_hours_left_on_raid(self):
+        data = await self.client.get_raid_activity()
+
+        end = data['endTime']  # yyyymmddThhmmss.000Z
+        year = int(end[:4])
+        month = int(end[4:6])
+        day = int(end[6:8])
+        hour = int(end[9:11])
+        minute = int(end[11:13])
+        second = int(end[13:15])
+
+        date = datetime.datetime(year, month, day, hour, minute, second)
+        end_time = math.floor(date.timestamp() * 1000)
+
+        now = math.floor(time.time() * 1000)
+
+        return (end_time - now) // MILLISECONDS_IN_HOUR
+
+    async def check_reminders(self, force_update=False):
+        raid_data = await self.client.get_raid_activity(override_cache=True)
+        if not await self.is_raid_on():
+            return
+
+        # TODO: list once after ended
+
+        member_data = await self.client.get_members(override_cache=True)
+
+        now = math.floor(time.time() * 1000)
+        last = self.db.get_last_update_time()
+        next_update = last + self.db.get_update_frequency() * MILLISECONDS_IN_HOUR
+
+        hours_left = await self.get_hours_left_on_raid()
+
+        if now >= next_update or force_update:
+            await self.send_info_message()
+
+        reminders = self.db.get_reminders()
+
+        progress = {}
+
+        for member in raid_data['members']:
+            missing = 6 - member['attacks']
+            tag = member['tag']
+            progress[tag] = missing
+
+        for member in member_data:
+            tag = member['tag']
+
+            if tag not in progress:
+                progress[tag] = 6
+
+        reminder_texts = []
+        extra_tags = []
+
+        for name, tag, hours, user_id in reminders:
+            if tag not in progress:
+                extra_tags.append(tag)
+                continue
+
+            missing = progress[tag]
+
+            if missing == 0:
+                continue
+
+            if hours_left <= hours:
+                reminder_texts.append(
+                    '<@' + str(user_id) + '>, muista raidit! ' + name + ' tehnyt ' + str(6 - missing) + '/6')
+
+        channel = self.bot.get_channel(self.db.get_reminder_channel_id())
+        for message in split_list(reminder_texts):
+            await channel.send(message)
+
+    async def send_info_message(self):
+        text = await self.get_raid_activity()
+
+        channel = self.bot.get_channel(self.db.get_info_channel_id())
+        for message in text:
+            await channel.send(message)
+
+        self.db.updated()
+
+    async def add_reminder(self, hours, user_id, tag):
+        if hours < -1 or hours > 72:
+            return 'Anna tuntien määrä väliltä 0-72. Poista muistutus antamalla -1'
+
+        if hours == -1:
+            self.db.remove_by_tag(tag)
+            return 'Poistettiin muistutus'
+
+        result = await self.db.set_reminder_time(user_id, hours, tag, self.client)
+        if result == -1:
+            return 'Annettu tägi ei vastaa ketään klaanin pelaajista'
+        if result == 0:
+            return 'Luotiin uusi muistutus'
+        if result == 1:
+            return 'Päivitettiin pelaajan muistutus, ja siirrettiin se tälle Discord-käyttäjälle'
+
+        return 'Jotain ihmeellistä tapahtui'

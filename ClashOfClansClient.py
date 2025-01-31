@@ -1,7 +1,19 @@
 import coc
+# https://cocpy.readthedocs.io/en/latest/models/players.html
+# https://github.com/mathsman5133/coc.py
+
+import math
+import time
 
 
 class ClashOfClansClient:
+    cached_members = None
+    members_updated = 0
+
+    cached_raid = None
+    raid_updated = 0
+
+    cache_time = 1000 * 60 * 15
 
     def __init__(self, token, clan_tag):
         self.clan_tag = clan_tag
@@ -26,16 +38,26 @@ class ClashOfClansClient:
             self.connected = False
             print('Disconnected from COC-api')
 
-    async def get_members(self):
+    async def get_members(self, override_cache=False):
         if not self.connected:
             return ['Not connected to Clash of Clans api']
 
-        data = await self.client.http.get_clan_members(self.clan_tag)
-        return data['items']
+        now = math.floor(time.time() * 1000)
+        if override_cache or now > self.members_updated + self.cache_time:
+            data = await self.client.http.get_clan_members(self.clan_tag)
+            self.cached_members = data['items']
+            self.members_updated = now
 
-    async def get_raid_activity(self):
+        return self.cached_members
+
+    async def get_raid_activity(self, override_cache=False):
         if not self.connected:
             return ['Not connected to Clash of Clans api']
 
-        raw = await self.client.http.get_clan_raid_log(self.clan_tag, **{"limit": 1})
-        return raw['items'][0]
+        now = math.floor(time.time() * 1000)
+        if override_cache or now > self.raid_updated + self.cache_time:
+            data = await self.client.http.get_clan_raid_log(self.clan_tag, **{"limit": 1})
+            self.cached_raid = data['items'][0]
+            self.raid_updated = now
+
+        return self.cached_raid

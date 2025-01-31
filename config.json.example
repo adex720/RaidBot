@@ -1,5 +1,10 @@
 {
   "clan-tag": "",
   "bot-token": "",
-  "coc-api-token": ""
+  "coc-api-token": "",
+  "database-address": "",
+  "database-port": 0,
+  "database-name": "",
+  "database-user": "",
+  "database-password": ""
 }
