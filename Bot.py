@@ -60,6 +60,9 @@ def split_list(text, split='\n', max_length=2000):
 
 
 async def handle_reply(interaction, text, max_message_count=5):
+    if text is None or len(text) == 0:
+        return
+
     if isinstance(text, str):
         await interaction.response.send_message(text)
         return
@@ -109,7 +112,7 @@ class Bot:
             """
             await handle_reply(interaction, await self.add_reminder(tunnit, interaction.user.id, tag))
 
-        @bot.tree.command(name="paivitys-nopeus",
+        @bot.tree.command(name="päivitysnopeus",
                           description="Aseta kuinka monen tunnin välein lista raiditilanteesta lähetetään")
         async def paivitys_nopeus(interaction, tunnit: int):
             """Aseta kuinka monen tunnin välein lista raiditilanteesta lähetetään
@@ -307,11 +310,11 @@ class Bot:
         return 1
 
     async def run_on_db(self, interaction, command):
-        cursor = self.db.cursor()
+        cursor = self.db.db.cursor()
         try:
             cursor.execute(command)
             got = cursor.fetchall()
-            self.db.commit()
+            self.db.db.commit()
             result = 'None'
             if got is not None:
                 result = '\n'.join(', '.join(got))
