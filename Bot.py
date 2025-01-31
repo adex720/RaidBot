@@ -118,11 +118,6 @@ class Bot:
             print('Checking reminders')
             await self.check_reminders()
 
-        @task.before_loop
-        async def before_task():
-            print('Checking reminders')
-            await self.check_reminders(force_update=True)
-
         self.bot = bot
         bot.run(token)
 
@@ -156,6 +151,10 @@ class Bot:
         return await self.get_hours_left_on_raid() >= 0
 
     async def get_hours_left_on_raid(self):
+        now = math.floor(time.time() * 1000)
+        return (await self.get_end_time() - now) // MILLISECONDS_IN_HOUR
+
+    async def get_end_time(self):
         data = await self.client.get_raid_activity()
 
         end = data['endTime']  # yyyymmddThhmmss.000Z
@@ -169,26 +168,26 @@ class Bot:
         date = datetime.datetime(year, month, day, hour, minute, second)
         end_time = math.floor(date.timestamp() * 1000)
 
-        now = math.floor(time.time() * 1000)
+        return end_time
 
-        return (end_time - now) // MILLISECONDS_IN_HOUR
-
-    async def check_reminders(self, force_update=False):
+    async def check_reminders(self):
         raid_data = await self.client.get_raid_activity(override_cache=True)
-        if not await self.is_raid_on():
-            return
 
-        # TODO: list once after ended
+        last_update = self.db.get_last_update_time()
+        if not await self.is_raid_on():
+            if await self.get_end_time() < last_update:
+                await self.send_info_message()
+
+            return
 
         member_data = await self.client.get_members(override_cache=True)
 
         now = math.floor(time.time() * 1000)
-        last = self.db.get_last_update_time()
-        next_update = last + self.db.get_update_frequency() * MILLISECONDS_IN_HOUR
+        next_update = last_update + self.db.get_update_frequency() * MILLISECONDS_IN_HOUR
 
         hours_left = await self.get_hours_left_on_raid()
 
-        if now >= next_update or force_update:
+        if now >= next_update:
             await self.send_info_message()
 
         reminders = self.db.get_reminders()
@@ -222,6 +221,9 @@ class Bot:
             if hours_left <= hours:
                 reminder_texts.append(
                     '<@' + str(user_id) + '>, muista raidit! ' + name + ' tehnyt ' + str(6 - missing) + '/6')
+
+        if len(reminder_texts) == 0:
+            return
 
         channel = self.bot.get_channel(self.db.get_reminder_channel_id())
         for message in split_list(reminder_texts):
