@@ -131,7 +131,7 @@ class Bot:
                 await interaction.response.send_message('Päivitysnopeus päivitetty')
                 return
 
-            await interaction.response.send_message('Anna kelvollinen aika väliltä 0-24 tuntia')
+            await interaction.response.send_message('Anna kelvollinen aika väliltä 0-72 tuntia')
 
         @bot.tree.command(name="github", description="Linkki botin koodiin")
         async def github(interaction):
@@ -303,7 +303,7 @@ class Bot:
         return 'Jotain ihmeellistä tapahtui'
 
     async def set_update_frequency(self, frequency):
-        if frequency < 0 or frequency > 24:
+        if frequency < 0 or frequency > 72:
             return -1
 
         self.db.set_update_frequency(frequency)
