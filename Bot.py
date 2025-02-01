@@ -167,7 +167,7 @@ class Bot:
 
         return False
 
-    async def get_raid_activity(self):
+    async def get_raid_activity(self, only_missing=False):
         raid_data = await self.client.get_raid_activity()
         member_data = await self.client.get_members()
 
@@ -188,6 +188,9 @@ class Bot:
                 continue
 
             result.append((0, member['name'] + ' 0/6'))
+
+        if only_missing:
+            result = [x for x in result if x[0] > -6]
 
         result.sort()
 
@@ -276,7 +279,7 @@ class Bot:
             await channel.send(message)
 
     async def send_info_message(self):
-        text = await self.get_raid_activity()
+        text = await self.get_raid_activity(only_missing=True)
 
         channel = self.bot.get_channel(self.db.get_info_channel_id())
         for message in text:
