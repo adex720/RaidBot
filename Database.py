@@ -27,7 +27,7 @@ class Database:
         print('Connected to database')
 
     def get_last_update_time(self):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT last_updated FROM memory;')
         return int(get_first(cursor.fetchone()))
 
@@ -35,66 +35,66 @@ class Database:
         if t == 0:
             t = math.floor(time.time() * 1000)
 
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('UPDATE memory SET last_updated=' + str(t) + ';')
         self.db.commit()
 
     def get_update_frequency(self):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT update_frequency FROM memory;')
         return int(get_first(cursor.fetchone()))
 
     def set_update_frequency(self, hours):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('UPDATE memory SET update_frequency=' + str(hours) + ';')
 
     def get_info_channel_id(self):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT info_channel FROM memory;')
         return int(get_first(cursor.fetchone()))
 
     def get_reminder_channel_id(self):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT reminder_channel FROM memory;')
         return int(get_first(cursor.fetchone()))
 
     def get_tag_by_user_id(self, user_id):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT tag FROM members WHERE user_id="' + user_id + '";')
         return get_first(cursor.fetchone())
 
     def get_name_by_user_id(self, user_id):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT name FROM members WHERE user_id="' + user_id + '";')
         return get_first(cursor.fetchone())
 
     def get_user_id_by_tag(self, tag):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT user_id FROM members WHERE tag="' + tag + '";')
         return long(get_first(cursor.fetchone()))
 
     def get_remind_time(self, tag):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT hours FROM members WHERE tag="' + tag + '";')
         return int(get_first(cursor.fetchone()))
 
     def remove_by_user_id(self, user_id, cursor=None):
         if cursor is None:
-            cursor = self.db.cursor()
+            cursor = self.db. cursor(buffered=True)
 
         cursor.execute('DELETE FROM members WHERE user_id=' + user_id + ';')
         self.db.commit()
 
     def remove_by_tag(self, tag, cursor=None):
         if cursor is None:
-            cursor = self.db.cursor()
+            cursor = self.db. cursor(buffered=True)
 
         cursor.execute('DELETE FROM members WHERE tag=' + tag + ';')
         self.db.commit()
 
     def has_reminder(self, tag, cursor=None):
         if cursor is None:
-            cursor = self.db.cursor()
+            cursor = self.db. cursor(buffered=True)
 
         cursor.execute('SELECT hours FROM members WHERE tag=' + tag + ';')
         return cursor.fetchall() is not None
@@ -106,7 +106,7 @@ class Database:
             1 when new reminder time was set and a reminder for the same tag was removed from another user id
         """
 
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT name FROM members WHERE tag="' + tag + '";')
         result = cursor.fetchone()
         if result is None:
@@ -144,11 +144,11 @@ class Database:
         return 0
 
     def get_reminders(self):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT * FROM members;')
         return cursor.fetchall()
 
     def get_manager_roles(self):
-        cursor = self.db.cursor()
+        cursor = self.db. cursor(buffered=True)
         cursor.execute('SELECT * FROM manager_roles;')
         return [int(x) for x in cursor.fetchone()]

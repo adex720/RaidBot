@@ -310,7 +310,7 @@ class Bot:
         return 1
 
     async def run_on_db(self, interaction, command):
-        cursor = self.db.db.cursor()
+        cursor = self.db.db.cursor(buffered=True)
         try:
             cursor.execute(command)
             got = cursor.fetchall()
