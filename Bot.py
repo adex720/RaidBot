@@ -224,7 +224,7 @@ class Bot:
 
         last_update = self.db.get_last_update_time()
         if not await self.is_raid_on():
-            if await self.get_end_time() < last_update:
+            if last_update < await self.get_end_time():
                 await self.send_info_message()
 
             return
