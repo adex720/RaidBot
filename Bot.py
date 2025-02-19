@@ -98,7 +98,9 @@ class Bot:
 
         @bot.tree.command(name="raidi", description="Listaa viimeisimmän raidin tulokset")
         async def listaa_raidi(interaction):
-            result = await self.get_raid_activity()
+            ended = not await self.is_raid_on()
+            message = None if ended else f'Raidia jäljellä {await self.get_hours_left_on_raid()} tuntia'
+            result = await self.get_raid_activity(message)
             await handle_reply(interaction, result)
 
         @bot.tree.command(name="muistutus", description="Lisää muistutus tekemättömistä raideista")
@@ -167,7 +169,7 @@ class Bot:
 
         return False
 
-    async def get_raid_activity(self, only_missing=False):
+    async def get_raid_activity(self, only_missing=False, start_message=None):
         raid_data = await self.client.get_raid_activity()
         member_data = await self.client.get_members()
 
@@ -194,7 +196,9 @@ class Bot:
 
         result.sort()
 
-        return split_list([rivi for m, rivi in result])
+        begin = [] if start_message is None else [start_message]
+
+        return split_list(begin + [rivi for m, rivi in result])
 
     async def is_raid_on(self):
         return await self.get_hours_left_on_raid() >= 0
@@ -279,7 +283,11 @@ class Bot:
             await channel.send(message)
 
     async def send_info_message(self):
-        text = await self.get_raid_activity(only_missing=True)
+        ended = not await self.is_raid_on()
+        message = 'Hyökkäykset jätti tekemättä:' if ended \
+            else f'Raidia jäljellä {await self.get_hours_left_on_raid()} tuntia'
+
+        text = await self.get_raid_activity(only_missing=True, start_message=message)
 
         channel = self.bot.get_channel(self.db.get_info_channel_id())
         for message in text:
