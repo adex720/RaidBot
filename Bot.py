@@ -218,7 +218,7 @@ class Bot:
         minute = int(end[11:13])
         second = int(end[13:15])
 
-        date = datetime.datetime(year, month, day, hour, minute, second)
+        date = datetime.datetime(year, month, day, hour, minute, second, tzinfo=datetime.timezone.utc)
         end_time = math.floor(date.timestamp() * 1000)
 
         return end_time
