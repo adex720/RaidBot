@@ -9,6 +9,7 @@ import discord
 from discord.ext import commands, tasks
 
 MILLISECONDS_IN_HOUR = 1000 * 60 * 60
+MILLISECONDS_IN_RAID = 3 * 24 * MILLISECONDS_IN_HOUR
 
 
 def split_string(text, split='\n', max_length=2000):
@@ -207,6 +208,10 @@ class Bot:
         now = math.floor(time.time() * 1000)
         return (await self.get_end_time() - now) // MILLISECONDS_IN_HOUR
 
+    async def get_hours_raid_has_been_active(self):
+        now = math.floor(time.time() * 1000)
+        return (now - await self.get_end_time() + MILLISECONDS_IN_RAID) // MILLISECONDS_IN_HOUR
+
     async def get_end_time(self):
         data = await self.client.get_raid_activity()
 
@@ -236,11 +241,11 @@ class Bot:
         member_data = await self.client.get_members(override_cache=True)
 
         now = math.floor(time.time() * 1000)
-        next_update = last_update + self.db.get_update_frequency() * MILLISECONDS_IN_HOUR
+        update_hours = self.db.get_update_frequency()
+        next_update = last_update + update_hours * MILLISECONDS_IN_HOUR
 
         hours_left = await self.get_hours_left_on_raid()
-
-        if now >= next_update:
+        if now >= next_update and await self.get_hours_raid_has_been_active() >= update_hours // 2:
             await self.send_info_message()
 
         reminders = self.db.get_reminders()
