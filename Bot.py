@@ -195,7 +195,7 @@ class Bot:
         if only_missing:
             result = [x for x in result if x[0] > -6]
 
-        result.sort()
+        result.sort(key=lambda x: (x[0], x[1].lower()))
 
         begin = [] if start_message is None else [start_message]
 
