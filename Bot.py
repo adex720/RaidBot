@@ -109,7 +109,7 @@ class Bot:
             try:
                 ended = not await self.is_raid_on()
                 message = None if ended else f'Raidia jäljellä {await self.get_hours_left_on_raid()} tuntia'
-                result = await self.get_raid_activity(message)
+                result = await self.get_raid_activity(start_message=message)
                 await handle_reply(interaction, result)
 
             except Maintenance:
