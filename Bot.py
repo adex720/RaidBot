@@ -2,6 +2,8 @@ import datetime
 import math
 import time
 
+from coc import Maintenance
+
 import discord
 # https://discordpy.readthedocs.io/en/latest/index.html
 # https://github.com/Rapptz/discord.py
@@ -94,15 +96,25 @@ class Bot:
 
         @bot.tree.command(name="jäsenet", description="Listaa klaanin jäsenet")
         async def listaa_jasenet(interaction):
-            data = await self.client.get_members()
-            await handle_reply(interaction, split_list([row['name'] for row in data]))
+            try:
+                data = await self.client.get_members()
+                await handle_reply(interaction, split_list([row['name'] for row in data]))
+
+            except Maintenance:
+                await interaction.response.send_message(
+                    'Datan kerääminen epäonnistui. Syy: Clash of Clans -palvelimen huoltokatko')
 
         @bot.tree.command(name="raidi", description="Listaa viimeisimmän raidin tulokset")
         async def listaa_raidi(interaction):
-            ended = not await self.is_raid_on()
-            message = None if ended else f'Raidia jäljellä {await self.get_hours_left_on_raid()} tuntia'
-            result = await self.get_raid_activity(message)
-            await handle_reply(interaction, result)
+            try:
+                ended = not await self.is_raid_on()
+                message = None if ended else f'Raidia jäljellä {await self.get_hours_left_on_raid()} tuntia'
+                result = await self.get_raid_activity(message)
+                await handle_reply(interaction, result)
+
+            except Maintenance:
+                await interaction.response.send_message(
+                    'Datan kerääminen epäonnistui. Syy: Clash of Clans -palvelimen huoltokatko')
 
         @bot.tree.command(name="muistutus", description="Lisää muistutus tekemättömistä raideista")
         async def muistutus(interaction, tunnit: int, tag: str):
@@ -229,7 +241,12 @@ class Bot:
         return end_time
 
     async def check_reminders(self):
-        raid_data = await self.client.get_raid_activity(override_cache=True)
+        try:
+            raid_data = await self.client.get_raid_activity(override_cache=True)
+
+        except Maintenance:
+            print('Cannot check reminders, Clash of Clans is in maintenance')
+            return
 
         last_update = self.db.get_last_update_time()
         if not await self.is_raid_on():
