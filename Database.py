@@ -153,3 +153,31 @@ class Database:
         cursor = self.db.cursor(buffered=True)
         cursor.execute('SELECT * FROM manager_roles;')
         return [int(x) for x in cursor.fetchone()]
+
+    def get_missed_times(self, tag):
+        cursor = self.db.cursor(buffered=True)
+        cursor.execute('SELECT times FROM missing WHERE tag="' + tag + '";')
+
+        result = cursor.fetchone()
+        if result is None:
+            return 0
+
+        return int(get_first(result))
+
+    def increment_missed(self, tag):
+        cursor = self.db.cursor(buffered=True)
+        cursor.execute('SELECT times FROM missing WHERE tag="' + tag + '";')
+        result = cursor.fetchone()
+
+        if result is None:
+            cursor.execute('INSERT INTO missing (tag, times, updated) VALUES ("' + tag + '", 1, TRUE);')
+        else:
+            cursor.execute('UPDATE missing SET times=times+1, updated=TRUE WHERE tag="' + tag + '";')
+
+        self.db.commit()
+
+    def removes_not_missed(self):
+        cursor = self.db.cursor(buffered=True)
+        cursor.execute('DELETE FROM missing WHERE updated=FALSE;')
+        cursor.execute('UPDATE missing SET updated=FALSE;')
+        self.db.commit()
