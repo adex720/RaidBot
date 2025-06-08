@@ -1,5 +1,6 @@
 import datetime
 import math
+import re
 import time
 
 from coc import Maintenance
@@ -75,6 +76,19 @@ async def handle_reply(interaction, text, max_message_count=5):
     if interaction.channel is not None:
         for i in range(1, min(max_message_count, len(text))):
             await interaction.channel.send(text[i])
+
+
+def is_valid_tag(tag):
+    if type(tag) is not str:
+        return False
+
+    if len(tag) < 5 or len(tag) > 12:
+        return False
+
+    if tag[0] != '#':
+        return False
+
+    return re.compile("^[a-zA-Z0-9]+$").match(tag[1::])
 
 
 class Bot:
@@ -318,6 +332,9 @@ class Bot:
         self.db.updated()
 
     async def add_reminder(self, hours, user_id, tag):
+        if not is_valid_tag(tag):
+            return 'Virheellinen tägi. Kelvollinen tägi alkaa #-merkillä, ja sitä seuraa pelkkiä kirjaimia ja numeroita'
+
         if hours < -1 or hours > 72:
             return 'Anna tuntien määrä väliltä 0-72. Poista muistutus antamalla -1'
 
