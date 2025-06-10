@@ -19,3 +19,6 @@ CREATE TABLE missing(
     times integer,
     updated bool
 );
+
+INSERT INTO members (last_updated, update_frequency, info_channel, reminder_channel)
+VALUES (0, 24, -1, -1);
